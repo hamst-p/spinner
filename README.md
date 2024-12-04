@@ -66,3 +66,4 @@ All commands are run from the root of the project, from a terminal:
 ## Want to learn more?
 
 Feel free to check Lexington's [documentation](https://lexingtonthemes.com/documentation/quick-start/)
+# spinner
