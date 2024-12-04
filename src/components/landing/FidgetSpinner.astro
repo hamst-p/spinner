@@ -1,0 +1,255 @@
+---
+// FidgetSpinner.astro
+---
+
+<div class="everything">
+    <div class="holder">
+      <div class="spinner">
+        <img src="/fidget.png" alt="fidget spinner" />
+      </div>
+      <div class="handle"></div>
+    </div>
+  </div>
+  
+  <!-- スクリプトを client:load で明示的にクライアントサイドで実行するように指定 -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js" is:inline></script>
+  
+  <script define:vars={{ }} client:load>
+  // jquery.pep
+  (function($) {
+    $.fn.pep = function(options) {
+      this.each(function() {
+        var $this = $(this);
+        
+        if (!$this.data('plugin_pep')) {
+          $this.data('plugin_pep', new $.pep(this, options));
+        }
+      });
+  
+      return this;
+    };
+  
+    $.pep = function(el, options) {
+      this.el = el;
+      this.$el = $(el);
+      this.options = options;
+      this.init();
+    };
+  
+    $.pep.prototype.init = function() {
+      var self = this;
+      
+      this.$el.on('mousedown touchstart', function(e) {
+        e.preventDefault();
+        self.start(e);
+      });
+    };
+  
+    $.pep.prototype.start = function(e) {
+      var self = this;
+      
+      $(document).on('mousemove touchmove', function(e) {
+        e.preventDefault();
+        self.move(e);
+      });
+  
+      $(document).on('mouseup touchend', function() {
+        self.stop();
+      });
+    };
+  
+    $.pep.prototype.move = function(e) {
+      if (this.options.drag) {
+        this.options.drag(e, this);
+      }
+    };
+  
+    $.pep.prototype.stop = function() {
+      $(document).off('mousemove touchmove mouseup touchend');
+      
+      if (this.options.easing) {
+        this.options.easing(null, this);
+      }
+    };
+  })(jQuery);
+  
+  // jquery.propeller
+  (function($) {
+    $.fn.propeller = function(options) {
+      var settings = $.extend({
+        inertia: 0.99,
+        speed: 0,
+        onRotate: function() {},
+        onDragStart: function() {},
+        onDragStop: function() {}
+      }, options);
+  
+      return this.each(function() {
+        var $this = $(this);
+        var angle = 0;
+        var dragging = false;
+        var startAngle, startRotation;
+        
+        function getAngle(e) {
+          var offset = $this.offset();
+          var center = {
+            x: offset.left + $this.width() / 2,
+            y: offset.top + $this.height() / 2
+          };
+          var mouse = {
+            x: e.pageX || e.touches[0].pageX,
+            y: e.pageY || e.touches[0].pageY
+          };
+          return Math.atan2(mouse.y - center.y, mouse.x - center.x) * 180 / Math.PI;
+        }
+  
+        $this.on('mousedown touchstart', function(e) {
+          e.preventDefault();
+          dragging = true;
+          startAngle = getAngle(e);
+          startRotation = angle;
+          settings.onDragStart.call(this);
+        });
+  
+        $(document).on('mousemove touchmove', function(e) {
+          if (!dragging) return;
+          
+          var currentAngle = getAngle(e);
+          var rotation = startRotation + (currentAngle - startAngle);
+          angle = rotation;
+          
+          $this.css('transform', 'rotate(' + rotation + 'deg)');
+          settings.onRotate.call(this);
+        });
+  
+        $(document).on('mouseup touchend', function() {
+          if (!dragging) return;
+          
+          dragging = false;
+          settings.onDragStop.call(this);
+          
+          function spin() {
+            if (!dragging && settings.speed !== 0) {
+              angle += settings.speed;
+              settings.speed *= settings.inertia;
+              
+              if (Math.abs(settings.speed) < 0.1) {
+                settings.speed = 0;
+              }
+              
+              $this.css('transform', 'rotate(' + angle + 'deg)');
+              requestAnimationFrame(spin);
+            }
+          }
+          
+          spin();
+        });
+      });
+    };
+  })(jQuery);
+  
+  // メインの実行コード
+  let initialOffset = 0;
+  let backgroundInit = false;
+  let spinner;
+  
+  function resizeMe() {
+    initialOffset = $(".handle").position().top;
+  }
+  
+  function updatePos(ev, obj) {
+    var $obj = $(obj.el);
+    $(".spinner").css({
+      top: $obj.position().top - initialOffset,
+      left: $obj.position().left - initialOffset
+    });
+  }
+  
+  function spin() {
+    $(".handle").pep({
+      drag: updatePos,
+      easing: updatePos
+    });
+  
+    initialOffset = $(".handle").position().top;
+    
+    spinner = $(".spinner").propeller({
+      inertia: 0.999,
+      speed: 0.5,
+      onDragStop: function() {
+        backgroundInit = true;
+      },
+      onDragStart: function() {
+        backgroundInit = false;
+      }
+    }); 
+  }
+  
+  // 初期化
+  $(document).ready(function() {
+    spin();
+    $(window).on("resize", resizeMe);
+  });
+  </script>
+  
+  <style>
+  .everything {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .spinner img {
+    width: 100%;
+  }
+  
+  .holder,
+  .spinner {
+    width: 300px;
+    height: 300px;
+    position: relative;
+  }
+  
+  .handle {
+    width: 70px;
+    height: 70px;
+    position: absolute;
+    top: 115px;
+    left: 115px;
+    z-index: 1;
+    cursor: pointer;
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 50%;
+    touch-action: none;
+  }
+  
+  @media screen and (min-width: 370px) and (max-width: 499px) {
+    .holder,
+    .spinner {
+      width: 360px;
+      height: 360px;
+    }
+    .handle {
+      width: 80px;
+      height: 80px;
+      top: 140px;
+      left: 140px;
+    }
+  }
+  
+  @media screen and (min-width: 500px) {
+    .holder,
+    .spinner {
+      width: 500px;
+      height: 500px;
+    }
+    .handle {
+      width: 100px;
+      height: 100px;
+      top: 200px;
+      left: 200px;
+    }
+  }
+  </style>
