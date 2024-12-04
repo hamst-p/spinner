@@ -16,3 +16,7 @@
     font-family: InterVariable, sans-serif;
   }
 }
+
+.handle {
+  caret-color: transparent;
+}
